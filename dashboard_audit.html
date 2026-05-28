@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>集团预算稽核终端 · 数据偏差侦测</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080d1a;--bg-card:#0d1426;--bg-elev:#111a30;--bg-input:#162038;
+    --border:#1c2747;--border-soft:#162038;--border-hot:#2a3a66;
+    --text:#e6ecff;--text-dim:#8a9bc7;--text-mute:#5a6a90;
+    --green:#00d4a8;--red:#ff5263;--amber:#f5a623;--blue:#4a9eff;--purple:#8b6ef7;
+    --green-glow:rgba(0,212,168,.18);--red-glow:rgba(255,82,99,.18);
+    --amber-glow:rgba(245,166,35,.18);--blue-glow:rgba(74,158,255,.18);
+    --display:'Syne',sans-serif;
+    --sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'IBM Plex Mono','Menlo',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  body{
+    background-image:
+      radial-gradient(circle at 15% 0%,rgba(74,158,255,.05),transparent 40%),
+      radial-gradient(circle at 85% 100%,rgba(139,110,247,.04),transparent 40%);
+    min-height:100vh;padding:20px;
+  }
+  .terminal{max-width:1480px;margin:0 auto}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+
+  /* ===== HEADER ===== */
+  header.topbar{display:flex;align-items:flex-end;justify-content:space-between;
+    padding:10px 4px 22px;border-bottom:1px solid var(--border);margin-bottom:22px;gap:24px;flex-wrap:wrap}
+  .brand h1{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.5px;line-height:1;color:var(--text)}
+  .brand h1 .accent{color:var(--amber)}
+  .brand .sub{font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-top:8px}
+  .meta{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .meta-item{font-size:11px;color:var(--text-dim);text-align:right}
+  .meta-item .v{display:block;color:var(--text);font-size:13px;letter-spacing:.5px;margin-top:2px}
+  .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 8px var(--green);margin-right:6px;animation:blink 1.6s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  .badge-confidential{font-size:10px;letter-spacing:2px;color:var(--red);
+    border:1px solid var(--red);padding:6px 12px;background:var(--red-glow)}
+
+  /* ===== 工具栏 ===== */
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;
+    padding:14px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px}
+  .toolbar .group{display:flex;gap:6px;align-items:center}
+  .toolbar label{font-size:11px;color:var(--text-dim);letter-spacing:1px}
+  .toolbar select,.toolbar button{
+    background:var(--bg-input);color:var(--text);border:1px solid var(--border);
+    padding:7px 12px;border-radius:4px;font-size:12px;font-family:var(--sans);
+    cursor:pointer;transition:all .2s}
+  .toolbar button:hover,.toolbar select:hover{border-color:var(--blue)}
+  .toolbar button.is-active{background:var(--blue);color:var(--text);border-color:var(--blue);box-shadow:0 0 8px var(--blue-glow)}
+  .toolbar button.btn-warn{color:var(--amber);border-color:var(--amber)}
+  .toolbar button.btn-warn:hover{background:var(--amber);color:var(--bg)}
+  .toolbar .spacer{flex:1}
+  .toolbar .stats{display:flex;gap:14px;font-size:11px}
+  .toolbar .stats span{display:flex;align-items:center;gap:5px;color:var(--text-dim)}
+  .toolbar .stats i{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  /* ===== 卡片通用 ===== */
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:18px;margin-bottom:16px;position:relative}
+  .card-title{font-size:11px;font-weight:600;letter-spacing:2px;color:var(--text);
+    margin-bottom:14px;display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px dashed var(--border)}
+  .card-title::before{content:'';width:4px;height:14px;border-radius:2px;background:var(--blue);box-shadow:0 0 6px var(--blue)}
+  .card-title .badge{margin-left:auto;font-size:10px;color:var(--text-mute);
+    border:1px solid var(--border);padding:3px 8px;border-radius:2px;font-weight:400;letter-spacing:1px}
+
+  /* ===== 异常告警栏 ===== */
+  #alertBoard{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;padding-right:6px}
+  .alert-item{display:grid;grid-template-columns:auto auto 1fr auto;gap:12px;align-items:center;
+    padding:10px 12px;border-radius:4px;font-size:12px;border-left:3px solid;background:var(--bg-elev)}
+  .alert-item.lv-red{border-left-color:var(--red);background:linear-gradient(90deg,var(--red-glow),var(--bg-elev) 50%)}
+  .alert-item.lv-amber{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-glow),var(--bg-elev) 50%)}
+  .alert-item.lv-blue{border-left-color:var(--blue);background:linear-gradient(90deg,var(--blue-glow),var(--bg-elev) 50%)}
+  .alert-item .icon{font-size:14px;width:20px;text-align:center}
+  .alert-item .tag{font-size:10px;letter-spacing:1px;color:var(--text-mute);width:84px;font-family:var(--mono)}
+  .alert-item .msg{color:var(--text)}
+  .alert-item .msg b{color:var(--amber);font-weight:500}
+  .alert-item .delta{font-family:var(--mono);font-size:11px;color:var(--text-mute)}
+  .alert-empty{text-align:center;padding:30px;color:var(--green);font-size:12px;letter-spacing:1px}
+
+  /* ===== 横向矩阵表 ===== */
+  .matrix-wrap{overflow-x:auto;margin:0 -4px}
+  table.matrix{width:100%;border-collapse:collapse;font-size:12px}
+  table.matrix thead th{
+    position:sticky;top:0;background:var(--bg-card);z-index:2;
+    font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--text-dim);
+    padding:10px 8px;text-align:right;border-bottom:1px solid var(--border);text-transform:uppercase;white-space:nowrap}
+  table.matrix thead th:first-child{text-align:left;position:sticky;left:0;z-index:3;background:var(--bg-card);min-width:160px}
+  table.matrix tbody td{padding:8px 8px;border-bottom:1px dashed var(--border-soft);text-align:right;color:var(--text);font-family:var(--mono);font-variant-numeric:tabular-nums}
+  table.matrix tbody td:first-child{text-align:left;color:var(--text);font-weight:500;font-family:var(--sans);
+    position:sticky;left:0;background:var(--bg-card);z-index:1;letter-spacing:.5px}
+  table.matrix tbody tr:hover td{background:var(--bg-elev)}
+  table.matrix tbody tr:hover td:first-child{background:var(--bg-elev)}
+  /* 数据单元格状态色 */
+  table.matrix td.cell{position:relative;cursor:text;transition:background .2s}
+  table.matrix td.cell:hover{background:var(--border-soft) !important;outline:1px solid var(--blue)}
+  table.matrix td.cell.is-empty{color:var(--text-mute);font-style:italic}
+  table.matrix td.cell.is-outlier-red{color:var(--red);background:var(--red-glow);font-weight:600}
+  table.matrix td.cell.is-outlier-amber{color:var(--amber);background:var(--amber-glow);font-weight:600}
+  table.matrix td.cell.is-mismatch{color:var(--red);background:repeating-linear-gradient(45deg,var(--red-glow),var(--red-glow) 4px,transparent 4px,transparent 8px)}
+  table.matrix td.cell input{
+    width:100%;background:transparent;border:none;color:inherit;font:inherit;text-align:right;
+    font-family:var(--mono);font-variant-numeric:tabular-nums;outline:none;padding:0}
+  table.matrix td.cell input:focus{background:var(--bg-input);box-shadow:inset 0 0 0 1px var(--blue)}
+  /* 行类型 */
+  table.matrix tr.row-section td{background:var(--bg-elev);font-weight:600;color:var(--blue);
+    font-size:10px;letter-spacing:2px;padding:8px;text-transform:uppercase;border-top:1px solid var(--border)}
+  table.matrix tr.row-section td:first-child{background:var(--bg-elev);color:var(--blue)}
+  table.matrix tr.row-derived td{background:linear-gradient(90deg,rgba(74,158,255,.05),transparent);font-weight:500}
+  table.matrix tr.row-derived td:first-child{background:linear-gradient(90deg,rgba(74,158,255,.05),transparent);color:var(--blue)}
+  table.matrix tr.row-total td{background:linear-gradient(90deg,var(--amber-glow),transparent);
+    font-family:var(--mono);font-weight:600;color:var(--amber);border-top:1px solid var(--amber);font-size:13px}
+  table.matrix tr.row-total td:first-child{background:linear-gradient(90deg,var(--amber-glow),transparent);color:var(--amber);font-family:var(--sans)}
+  /* 单位/统计列 */
+  table.matrix .col-unit{color:var(--text-mute);font-size:10px;font-family:var(--sans)}
+  table.matrix .col-stat{color:var(--text-dim);font-size:11px;background:rgba(255,255,255,.02)}
+  table.matrix .col-stat.is-cv-high{color:var(--red)}
+  table.matrix .col-stat.is-cv-mid{color:var(--amber)}
+  table.matrix .mini-tag{font-size:9px;color:var(--text-mute);letter-spacing:1px}
+
+  /* ===== 单校区纵向卡片 ===== */
+  .vertical-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:1100px){.vertical-grid{grid-template-columns:1fr}}
+  .v-campus h3{font-family:var(--display);font-weight:700;font-size:18px;color:var(--amber);margin-bottom:8px;letter-spacing:1px}
+  .v-row{display:grid;grid-template-columns:120px 1fr 1fr 1fr 70px;gap:10px;align-items:center;
+    padding:7px 10px;font-size:11px;border-bottom:1px dashed var(--border-soft)}
+  .v-row.head{font-size:9px;letter-spacing:1.5px;color:var(--text-mute);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:8px}
+  .v-row .lab{color:var(--text-dim);font-size:11px}
+  .v-row .vv{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+  .v-row .vv.empty{color:var(--text-mute);font-style:italic}
+  .v-row .delta{font-family:var(--mono);font-size:10px;text-align:right}
+  .v-row .delta.up{color:var(--green)}
+  .v-row .delta.down{color:var(--red)}
+  .v-row .delta.warn{color:var(--amber)}
+  .v-row.section{background:var(--bg-elev);font-weight:600;color:var(--blue);padding:6px 10px;
+    font-size:9px;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+  .v-row.section .lab{color:var(--blue)}
+  .v-row.derived{background:rgba(74,158,255,.04)}
+  .v-row.total{background:var(--amber-glow);color:var(--amber);font-weight:600;border-bottom:1px solid var(--amber)}
+  .v-row.total .lab,.v-row.total .vv,.v-row.total .delta{color:var(--amber)}
+  /* mini sparkline */
+  .spark{display:flex;gap:2px;align-items:flex-end;height:16px}
+  .spark i{flex:1;background:var(--blue);border-radius:1px;min-height:2px;opacity:.7}
+  .spark.warn i{background:var(--amber)}
+  .spark.bad i{background:var(--red)}
+
+  /* ===== 自检报告 ===== */
+  .audit-list{display:flex;flex-direction:column;gap:6px;font-size:12px}
+  .audit-item{display:grid;grid-template-columns:auto 110px 1fr auto;gap:12px;align-items:center;
+    padding:8px 12px;border-radius:3px;background:var(--bg-elev)}
+  .audit-item.ok{border-left:3px solid var(--green)}
+  .audit-item.warn{border-left:3px solid var(--amber);background:linear-gradient(90deg,var(--amber-glow),var(--bg-elev) 60%)}
+  .audit-item.bad{border-left:3px solid var(--red);background:linear-gradient(90deg,var(--red-glow),var(--bg-elev) 60%)}
+  .audit-item .ic{width:18px;text-align:center}
+  .audit-item .who{color:var(--text-dim);font-size:11px}
+  .audit-item .formula{color:var(--text);font-family:var(--mono);font-size:11px}
+  .audit-item .formula b{color:var(--amber)}
+  .audit-item .delta{font-family:var(--mono);font-size:11px;color:var(--text-mute);text-align:right}
+  .audit-item.bad .delta{color:var(--red)}
+  .audit-item.warn .delta{color:var(--amber)}
+  .audit-item.ok .delta{color:var(--green)}
+
+  /* ===== Footer ===== */
+  footer.disclaim{margin-top:28px;padding:18px 4px;border-top:1px solid var(--border);
+    font-size:10px;color:var(--text-mute);letter-spacing:.5px;line-height:1.8}
+  footer.disclaim h4{font-size:10px;font-weight:600;color:var(--text-dim);letter-spacing:2px;margin:8px 0 4px}
+
+  /* 滚动条 */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--text-mute)}
+</style>
+
+
+</style>
+</head>
+<body>
+<div class="terminal">
+
+  <!-- ========== HEADER ========== -->
+  <header class="topbar">
+    <div class="brand">
+      <h1>集团预算 <span class="accent">稽核终端</span></h1>
+      <div class="sub">数据偏差侦测 · 横纵交叉对比 · v2026.05</div>
+    </div>
+    <div class="meta">
+      <div class="meta-item"><span class="live-dot"></span>实时校验<span class="v">编辑即重算</span></div>
+      <div class="meta-item">数据基期<span class="v">2026-05-04</span></div>
+      <div class="meta-item">覆盖范围<span class="v">2 / 13 校区 · 1 / 3 学年</span></div>
+      <div class="badge-confidential">⚠ 内部使用</div>
+    </div>
+  </header>
+
+  <!-- ========== 工具栏 ========== -->
+  <div class="toolbar">
+    <div class="group">
+      <label>查看学年</label>
+      <select id="yearSelect">
+        <option value="2026-2027" selected>2026-2027 学年</option>
+        <option value="2027-2028">2027-2028 学年</option>
+        <option value="2028-2029">2028-2029 学年</option>
+      </select>
+    </div>
+    <div class="group">
+      <button id="btnAll" class="is-active">全部指标</button>
+      <button id="btnAlertOnly">仅看异常</button>
+      <button id="btnReset" class="btn-warn">重置数据</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="stats" id="statsBar">
+      <span><i style="background:var(--red)"></i>严重 <b id="cntRed">0</b></span>
+      <span><i style="background:var(--amber)"></i>警告 <b id="cntAmber">0</b></span>
+      <span><i style="background:var(--blue)"></i>提示 <b id="cntBlue">0</b></span>
+      <span><i style="background:var(--green)"></i>正常 <b id="cntOk">0</b></span>
+    </div>
+  </div>
+
+  <!-- ========== 1. 异常告警栏 ========== -->
+  <div class="card">
+    <div class="card-title">★ 异常告警 / 自动扫描发现的可疑数据
+      <span class="badge" id="alertSummary">扫描中…</span>
+    </div>
+    <div id="alertBoard"></div>
+  </div>
+
+  <!-- ========== 2. 横向矩阵 ========== -->
+  <div class="card">
+    <div class="card-title">▦ 横向对比矩阵 / 当年各校区指标对照
+      <span class="badge">点击单元格可直接修改 · 颜色标记离群值</span>
+    </div>
+    <div class="matrix-wrap">
+      <table class="matrix" id="matrixTable"></table>
+    </div>
+  </div>
+
+  <!-- ========== 3. 单校区纵向（蛇口 / 福田） ========== -->
+  <div class="card">
+    <div class="card-title">▥ 纵向走势 / 单校区 3 学年趋势对比
+      <span class="badge">同比突变标橙 / 趋势异常标红</span>
+    </div>
+    <div class="vertical-grid" id="verticalGrid"></div>
+  </div>
+
+  <!-- ========== 4. 计算自检 ========== -->
+  <div class="card">
+    <div class="card-title">✓ 计算式自检 / 数据自洽性核验
+      <span class="badge">公式偏差 ≥ 1% 标黄 · ≥ 5% 标红</span>
+    </div>
+    <div class="audit-list" id="auditList"></div>
+  </div>
+
+  <!-- ========== Footer ========== -->
+  <footer class="disclaim">
+    <h4>◇ 稽核规则</h4>
+    [1] <b>计算自检</b>：营收 = 主营+其他；营业成本 = 主营+其他+管理+税金+财务费用；营业利润 = 营收−营业成本；学费 ≈ 平均学费×在校生；BG 费用 ≈ 学费×13%。<br>
+    [2] <b>横向离群</b>：指标偏离已录入校区均值 ±20% 标橙、±35% 标红。<br>
+    [3] <b>纵向突变</b>：相邻学年同比变化 ±15% 标橙、±30% 标红（学生数、利润率等结构性指标阈值更严）。<br>
+    [4] <b>结构合理性</b>：师生比偏离 1:3-5 区间标黄；利润率 &lt; 10% 或 &gt; 35% 标黄；BG 费用偏离学费的 13% 超 1% 标橙。
+    <h4>◇ 使用说明</h4>
+    点击任意数字可直接修改，所有衍生指标（合计/利润/利润率/师生比等）会立即重算，告警和颜色随之刷新。点击「重置数据」可恢复原始填报值。
+    <h4>◇ 免责声明</h4>
+    本工具仅用于内部数据稽核，不构成最终财务结论。任何修改仅在浏览器本地生效，不会回写源数据。
+  </footer>
+
+</div>
+
+
+
+<script>
+/* ============================================================
+   集团预算稽核终端 · 内联 JS
+   设计：单一数据源 → 衍生指标自动计算 → 校验规则统一执行
+   ============================================================ */
+
+/* ───────── A. 原始数据（用户填报） ───────── */
+/* 单位：万元（人数除外）。每个校区 × 每个学年 × 一组字段。
+   留空（null）= 校区尚未填报。蛇口、福田 26-27 完整，其余作为占位。 */
+const RAW = {
+  // 字段说明
+  fields: {
+    students: '在校生人数',
+    avgTuition: '平均学费',
+    avgFee: '平均杂费',
+    staff: '教职工总数',
+    foreignTeacher: '外籍教师人数',
+    chineseTeacher: '中方教师人数',
+
+    revTuition: '学费收入',
+    revHobby: '兴趣班收入',
+    revExam: '考试费收入',
+    revMeal: '餐费收入',
+    revBus: '校车费收入',
+    revDorm: '住宿费收入',
+    revOther: '其他收入',
+
+    costSalaryF: '外籍教师薪酬',
+    costSalaryC: '中方教师薪酬',
+    costRentExt: '外部场地租金',
+    costRentInt: '内部场地租金',
+    costDormInt: '内部宿舍租金',
+    costWelfare: '教师福利合计',
+    costAdminMix: '教学综合+管理办公',
+    costBOES:    'BOES 课程及管理费',
+    costBOESopen:'BOES 开办费',
+    costBG:      'BG 费用(13%)',
+    costMeal:    '餐厅成本',
+    costBus:     '校车成本',
+    costDormOp:  '宿舍成本',
+    costMgmt:    '管理费用(行政后勤)',
+    costTax:     '税金及附加',
+    costFinance: '财务费用',
+    revOtherGain:'其他收益',
+    nonOpIn:     '营业外收入',
+    nonOpOut:    '营业外支出',
+  },
+
+  // 蛇口校区
+  '蛇口': {
+    '2026-2027': {
+      students:1730, avgTuition:31.99, avgFee:1.13, staff:471,
+      foreignTeacher:147, chineseTeacher:116,
+      revTuition:55064.76, revHobby:12, revExam:0,
+      revMeal:1695, revBus:240, revDorm:0, revOther:14,
+      costSalaryF:9500, costSalaryC:5200,
+      costRentExt:5700, costRentInt:5232, costDormInt:0,
+      costWelfare:1657, costAdminMix:1700,
+      costBOES:1751.06, costBOESopen:0, costBG:7158.42,
+      costMeal:2167.44, costBus:227.20, costDormOp:0,
+      costMgmt:2835, costTax:3.5, costFinance:40,
+      revOtherGain:0, nonOpIn:45, nonOpOut:20,
+    },
+    '2027-2028': null,
+    '2028-2029': null,
+  },
+
+  // 福田校区
+  '福田': {
+    '2026-2027': {
+      students:1780, avgTuition:26.75, avgFee:1.18, staff:478,
+      foreignTeacher:140, chineseTeacher:143,
+      revTuition:47382.09, revHobby:0, revExam:0,
+      revMeal:1779.11, revBus:312.96, revDorm:0, revOther:0,
+      costSalaryF:8456.79, costSalaryC:6531.81,
+      costRentExt:2343.79, costRentInt:3300, costDormInt:105.35,
+      costWelfare:1734.16, costAdminMix:1838.98,
+      costBOES:1506.75, costBOESopen:0, costBG:6159.67,
+      costMeal:2110.76, costBus:226.82, costDormOp:0,
+      costMgmt:3150.66, costTax:10.6, costFinance:80,
+      revOtherGain:40, nonOpIn:0, nonOpOut:0,
+    },
+    '2027-2028': null,
+    '2028-2029': null,
+  },
+
+  // 占位校区（13 个总数 - 已填 2 = 11）
+  '广州国际':{'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '杭州国际':{'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '小径湾':  {'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '南京':    {'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '成都':    {'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '武汉':    {'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '光明':    {'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '南山幼儿园':{'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '福田幼儿园':{'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '广州双语':{'2026-2027':null,'2027-2028':null,'2028-2029':null},
+  '北京':    {'2026-2027':null,'2027-2028':null,'2028-2029':null},
+};
+
+const CAMPUSES = ['蛇口','福田','广州国际','杭州国际','小径湾','南京','成都','武汉','光明','南山幼儿园','福田幼儿园','广州双语','北京'];
+const YEARS = ['2026-2027','2027-2028','2028-2029'];
+
+/* state：当前编辑后的数据副本（深拷贝） */
+let STATE = JSON.parse(JSON.stringify(RAW));
+let curYear = '2026-2027';
+let viewMode = 'all'; // all | alertOnly
+
+
+
+/* ───────── B. 衍生指标计算 ───────── */
+function derive(d){
+  if(!d) return null;
+  const n = (x)=> (x==null||isNaN(x)) ? 0 : Number(x);
+  const r = {};
+  // 收入
+  r.revMain   = n(d.revTuition) + n(d.revHobby) + n(d.revExam);
+  r.revOther  = n(d.revMeal) + n(d.revBus) + n(d.revDorm) + n(d.revOther);
+  r.revenue   = r.revMain + r.revOther;
+  // 教学主营成本
+  r.costSalary  = n(d.costSalaryF) + n(d.costSalaryC);
+  r.costRent    = n(d.costRentExt) + n(d.costRentInt) + n(d.costDormInt);
+  r.costUS      = n(d.costBOES) + n(d.costBOESopen) + n(d.costBG);
+  r.costMain    = r.costSalary + r.costRent + n(d.costWelfare) + n(d.costAdminMix) + r.costUS;
+  // 其他业务成本
+  r.costOther   = n(d.costMeal) + n(d.costBus) + n(d.costDormOp);
+  // 营业成本合计
+  r.cost        = r.costMain + r.costOther + n(d.costMgmt) + n(d.costTax) + n(d.costFinance) - n(d.revOtherGain);
+  // 利润
+  r.opProfit    = r.revenue - r.cost;
+  r.cashProfit  = r.opProfit + n(d.nonOpIn) - n(d.nonOpOut);
+  // 比率
+  r.profitMargin = r.revenue ? (r.opProfit / r.revenue * 100) : 0;
+  r.costRatio    = r.revenue ? (r.cost / r.revenue * 100) : 0;
+  r.studentTeacherRatio = (n(d.staff) && n(d.students)) ? (n(d.students) / n(d.staff)) : 0;
+  r.profitPerStudent    = n(d.students) ? (r.opProfit / n(d.students)) : 0;
+  r.tuitionImplied      = n(d.students) * n(d.avgTuition); // 学费理论值
+  r.bgImplied           = n(d.revTuition) * 0.13;          // BG 13% 理论值
+  r.foreignSalaryAvg    = n(d.foreignTeacher) ? (n(d.costSalaryF) / n(d.foreignTeacher)) : 0;
+  r.chineseSalaryAvg    = n(d.chineseTeacher) ? (n(d.costSalaryC) / n(d.chineseTeacher)) : 0;
+  r.staffImplied        = n(d.foreignTeacher) + n(d.chineseTeacher); // 教职工理论下限（仅教师）
+  return r;
+}
+
+function getAll(year){
+  const arr = [];
+  for(const c of CAMPUSES){
+    const raw = STATE[c][year];
+    if(raw){
+      arr.push({campus:c, year, raw, der:derive(raw)});
+    }
+  }
+  return arr;
+}
+
+/* ───────── C. 自检规则 ───────── */
+/* 每条规则返回 {ok:'ok'|'warn'|'bad', delta, msg} */
+function auditRules(c, year){
+  const raw = STATE[c][year];
+  if(!raw) return [];
+  const der = derive(raw);
+  const out = [];
+  const fmt = (n)=> (Math.abs(n)<1?n.toFixed(2):n.toFixed(2));
+  const tag = (rel)=> rel<=0.01?'ok':rel<=0.05?'warn':'bad';
+
+  // 1. 学费理论值 vs 填报值
+  if(raw.students && raw.avgTuition){
+    const diff = raw.revTuition - der.tuitionImplied;
+    const rel = der.tuitionImplied ? Math.abs(diff)/der.tuitionImplied : 0;
+    out.push({
+      type:'学费一致性',
+      formula:`填报学费 ${fmt(raw.revTuition)} vs 平均学费${fmt(raw.avgTuition)}×在校生${raw.students} = ${fmt(der.tuitionImplied)}`,
+      ok:tag(rel), delta:`差 ${fmt(diff)} 万 (${(rel*100).toFixed(1)}%)`
+    });
+  }
+  // 2. BG 费用是否为学费的 13%
+  if(raw.revTuition && raw.costBG){
+    const diff = raw.costBG - der.bgImplied;
+    const rel = der.bgImplied ? Math.abs(diff)/der.bgImplied : 0;
+    out.push({
+      type:'BG 13% 校验',
+      formula:`填报 BG ${fmt(raw.costBG)} vs 学费${fmt(raw.revTuition)}×13% = ${fmt(der.bgImplied)}`,
+      ok:tag(rel), delta:`差 ${fmt(diff)} 万 (${(rel*100).toFixed(1)}%)`
+    });
+  }
+  // 3. 教职工人数 ≥ 教师人数
+  if(raw.staff && (raw.foreignTeacher||raw.chineseTeacher)){
+    const need = (raw.foreignTeacher||0) + (raw.chineseTeacher||0);
+    const ok = raw.staff >= need ? 'ok' : 'bad';
+    out.push({
+      type:'人员关系',
+      formula:`教职工总数 ${raw.staff} ≥ 外籍${raw.foreignTeacher||0}+中方${raw.chineseTeacher||0} = ${need}`,
+      ok, delta: ok==='ok'?'已含行政等':`缺口 ${need-raw.staff} 人`
+    });
+  }
+  // 4. 师生比合理性
+  if(raw.staff && raw.students){
+    const ratio = raw.students / raw.staff;
+    const ok = (ratio>=2.5 && ratio<=6) ? 'ok' : (ratio<2 || ratio>8) ? 'bad' : 'warn';
+    out.push({
+      type:'师生比',
+      formula:`师生比 1 : ${ratio.toFixed(2)}（参考区间 1:3 ~ 1:5）`,
+      ok, delta: ratio<2.5?'教职工偏多':ratio>6?'教职工偏少':'合理'
+    });
+  }
+  // 5. 利润率合理性
+  const pm = der.profitMargin;
+  out.push({
+    type:'利润率合理性',
+    formula:`营业利润率 ${pm.toFixed(2)}%（参考区间 15% ~ 30%）`,
+    ok: (pm<5||pm>40)?'bad':(pm<10||pm>35)?'warn':'ok',
+    delta: pm<10?'偏低':pm>35?'偏高':'合理'
+  });
+  // 6. 现金流 vs 利润
+  if(der.cashProfit && der.opProfit){
+    const conv = der.opProfit ? (der.cashProfit/der.opProfit) : 0;
+    out.push({
+      type:'现金转化率',
+      formula:`现金流利润 ${fmt(der.cashProfit)} ÷ 营业利润 ${fmt(der.opProfit)} = ${(conv*100).toFixed(1)}%`,
+      ok:(conv>0.85 && conv<1.15)?'ok':'warn',
+      delta: conv>1.15?'营业外收入偏高':conv<0.85?'营业外支出偏高':'正常'
+    });
+  }
+  return out;
+}
+
+/* ───────── D. 横向离群侦测 ───────── */
+function outlier(year){
+  const arr = getAll(year);
+  if(arr.length<2) return {};
+  // 统计每个指标在所有已填校区的均值
+  const indicators = ['students','avgTuition','avgFee','staff','revTuition','revenue','cost','opProfit','profitMargin','costRatio','studentTeacherRatio','profitPerStudent','foreignSalaryAvg','chineseSalaryAvg'];
+  const stats = {};
+  for(const k of indicators){
+    const vals = arr.map(x => x.der && x.der[k]!=null ? x.der[k] : x.raw[k]).filter(v=>v!=null && !isNaN(v) && v!==0);
+    if(vals.length<2){stats[k]={mean:null,std:null};continue}
+    const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+    const std  = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+    const cv   = mean ? std/Math.abs(mean) : 0;
+    stats[k] = {mean,std,cv,vals};
+  }
+  return stats;
+}
+
+function classifyOutlier(val, stat){
+  if(!stat || stat.mean==null || !val) return '';
+  const dev = Math.abs(val - stat.mean) / Math.abs(stat.mean);
+  if(dev >= 0.35) return 'is-outlier-red';
+  if(dev >= 0.20) return 'is-outlier-amber';
+  return '';
+}
+
+/* ───────── E. 纵向同比侦测 ───────── */
+function yoyChange(c, fieldOrDeriveKey){
+  const seq = YEARS.map(y => {
+    const raw = STATE[c][y];
+    if(!raw) return null;
+    if(raw.hasOwnProperty(fieldOrDeriveKey)) return raw[fieldOrDeriveKey];
+    const d = derive(raw); return d ? d[fieldOrDeriveKey] : null;
+  });
+  return seq;
+}
+function classifyYoY(prev, cur, looseLimit=0.15, tightLimit=0.30){
+  if(prev==null || cur==null || !prev) return '';
+  const dev = Math.abs(cur - prev) / Math.abs(prev);
+  if(dev >= tightLimit) return 'down';   // 用 down 表示需关注的剧烈变化
+  if(dev >= looseLimit) return 'warn';
+  return cur >= prev ? 'up' : 'down';
+}
+
+/* ───────── F. 数字格式化 ───────── */
+function fmt(n, dec=2){
+  if(n==null || isNaN(n)) return '—';
+  if(n===0) return '0';
+  const a = Math.abs(n);
+  if(a>=10000) return (n/10000).toFixed(2)+'亿';
+  if(a>=1) return n.toLocaleString('zh-CN',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  return n.toFixed(dec);
+}
+function fmtRaw(n, dec=2){
+  if(n==null || isNaN(n)) return '—';
+  if(n===0) return '0';
+  return Number(n).toLocaleString('zh-CN',{minimumFractionDigits:0,maximumFractionDigits:dec});
+}
+function fmtPct(n, dec=1){
+  if(n==null || isNaN(n)) return '—';
+  return n.toFixed(dec)+'%';
+}
+
+
+
+/* ───────── G. 渲染 · 横向矩阵 ───────── */
+/* 矩阵行配置：[id, 显示名, 类型, 单位, 是否参与离群, 默认隐藏(仅异常视图)] */
+const MATRIX_ROWS = [
+  {section:'★ 学生与人员'},
+  {k:'students',     name:'在校生人数',    type:'raw', unit:'人',  out:true},
+  {k:'avgTuition',   name:'平均学费',      type:'raw', unit:'万元/人', out:true},
+  {k:'avgFee',       name:'平均杂费',      type:'raw', unit:'万元/人', out:true},
+  {k:'staff',        name:'教职工总数',    type:'raw', unit:'人',  out:true},
+  {k:'foreignTeacher',name:'外籍教师人数', type:'raw', unit:'人'},
+  {k:'chineseTeacher',name:'中方教师人数', type:'raw', unit:'人'},
+  {k:'studentTeacherRatio', name:'师生比 (学生/教职工)', type:'der', unit:'倍', out:true, dec:2},
+
+  {section:'★ 营业收入（万元）'},
+  {k:'revTuition',   name:'学费收入',      type:'raw', unit:'万', out:true},
+  {k:'revHobby',     name:'兴趣班收入',    type:'raw', unit:'万'},
+  {k:'revMeal',      name:'餐费收入',      type:'raw', unit:'万'},
+  {k:'revBus',       name:'校车费收入',    type:'raw', unit:'万'},
+  {k:'revDorm',      name:'住宿费收入',    type:'raw', unit:'万'},
+  {k:'revMain',      name:'主营收入合计',  type:'der', unit:'万', derived:true},
+  {k:'revOther',     name:'其他收入合计',  type:'der', unit:'万', derived:true},
+  {k:'revenue',      name:'营业收入合计',  type:'der', unit:'万', total:true, out:true},
+
+  {section:'★ 营业成本（万元）'},
+  {k:'costSalaryF',  name:'外籍教师薪酬',  type:'raw', unit:'万'},
+  {k:'costSalaryC',  name:'中方教师薪酬',  type:'raw', unit:'万'},
+  {k:'foreignSalaryAvg', name:'外籍人均薪酬', type:'der', unit:'万/人', out:true, dec:2},
+  {k:'chineseSalaryAvg', name:'中方人均薪酬', type:'der', unit:'万/人', out:true, dec:2},
+  {k:'costSalary',   name:'师资薪酬小计',  type:'der', unit:'万', derived:true},
+  {k:'costRentExt',  name:'外部场地租金',  type:'raw', unit:'万'},
+  {k:'costRentInt',  name:'内部场地租金',  type:'raw', unit:'万'},
+  {k:'costRent',     name:'场地租金小计',  type:'der', unit:'万', derived:true},
+  {k:'costWelfare',  name:'教师福利合计',  type:'raw', unit:'万'},
+  {k:'costAdminMix', name:'教学综合+管理办公',type:'raw', unit:'万'},
+  {k:'costBOES',     name:'BOES 课程及管理',type:'raw', unit:'万'},
+  {k:'costBG',       name:'BG 费用 (13%)', type:'raw', unit:'万'},
+  {k:'costUS',       name:'美国费用小计',  type:'der', unit:'万', derived:true},
+  {k:'costMain',     name:'主营成本小计',  type:'der', unit:'万', derived:true, out:true},
+  {k:'costMeal',     name:'餐厅成本',      type:'raw', unit:'万'},
+  {k:'costBus',      name:'校车成本',      type:'raw', unit:'万'},
+  {k:'costMgmt',     name:'管理费用',      type:'raw', unit:'万'},
+  {k:'costTax',      name:'税金及附加',    type:'raw', unit:'万'},
+  {k:'costFinance',  name:'财务费用',      type:'raw', unit:'万'},
+  {k:'cost',         name:'营业成本合计',  type:'der', unit:'万', total:true, out:true},
+
+  {section:'★ 利润与关键比率'},
+  {k:'opProfit',     name:'营业利润',      type:'der', unit:'万', total:true, out:true},
+  {k:'cashProfit',   name:'现金流利润',    type:'der', unit:'万', total:true, out:true},
+  {k:'profitMargin', name:'营业利润率',    type:'der', unit:'%',  out:true, dec:2},
+  {k:'costRatio',    name:'成本率',        type:'der', unit:'%',  out:true, dec:2},
+  {k:'profitPerStudent',name:'生均利润',   type:'der', unit:'万/人',out:true,dec:2},
+];
+
+function renderMatrix(){
+  const stats = outlier(curYear);
+  const tbl = document.getElementById('matrixTable');
+  let html = '<thead><tr><th>指标</th><th class="col-unit">单位</th>';
+  for(const c of CAMPUSES){
+    const filled = STATE[c][curYear] != null;
+    html += `<th class="${filled?'':'col-stat'}">${c}${filled?'':'<br><span class="mini-tag">未填</span>'}</th>`;
+  }
+  html += '<th class="col-stat">均值</th><th class="col-stat">变异系数</th></tr></thead><tbody>';
+
+  for(const row of MATRIX_ROWS){
+    if(row.section){
+      html += `<tr class="row-section"><td colspan="${CAMPUSES.length+3}">${row.section}</td></tr>`;
+      continue;
+    }
+    const cls = row.total ? 'row-total' : row.derived ? 'row-derived' : '';
+    html += `<tr class="${cls}" data-key="${row.k}"><td>${row.name}</td><td class="col-unit">${row.unit}</td>`;
+
+    for(const c of CAMPUSES){
+      const raw = STATE[c][curYear];
+      let val = null, cellCls = 'cell', editable = (row.type==='raw');
+      if(!raw){
+        html += `<td class="cell is-empty">—</td>`;
+        continue;
+      }
+      if(row.type==='raw'){
+        val = raw[row.k];
+      } else {
+        val = derive(raw)[row.k];
+      }
+      if(val==null || isNaN(val)){
+        html += `<td class="${cellCls} is-empty">—</td>`;
+        continue;
+      }
+      // 离群侦测
+      if(row.out){
+        const stat = stats[row.k];
+        const oc = classifyOutlier(val, stat);
+        if(oc) cellCls += ' '+oc;
+      }
+      const dec = row.dec ?? (row.unit==='%' ? 2 : 2);
+      const display = row.unit==='人' ? Math.round(val).toString()
+                    : row.unit==='%' ? val.toFixed(dec)
+                    : fmtRaw(val, dec);
+      if(editable){
+        html += `<td class="${cellCls}"><input type="text" data-c="${c}" data-y="${curYear}" data-k="${row.k}" value="${display}" /></td>`;
+      } else {
+        html += `<td class="${cellCls}">${display}</td>`;
+      }
+    }
+    // 均值 / CV 列
+    const stat = stats[row.k];
+    if(stat && stat.mean!=null){
+      const meanDisp = row.unit==='人' ? Math.round(stat.mean).toString()
+                     : row.unit==='%' ? stat.mean.toFixed(2)
+                     : fmtRaw(stat.mean, row.dec ?? 2);
+      const cv = stat.cv;
+      const cvCls = cv>=0.30 ? 'is-cv-high' : cv>=0.15 ? 'is-cv-mid' : '';
+      html += `<td class="col-stat">${meanDisp}</td><td class="col-stat ${cvCls}">${cv!=null?(cv*100).toFixed(1)+'%':'—'}</td>`;
+    } else {
+      html += `<td class="col-stat">—</td><td class="col-stat">—</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody>';
+  tbl.innerHTML = html;
+  bindEdits();
+}
+
+
+
+/* ───────── H. 渲染 · 单校区纵向 ───────── */
+const VERT_ROWS = [
+  {section:'学生与人员'},
+  {k:'students',     name:'在校生人数',    unit:'人',  loose:0.10, tight:0.20, type:'raw'},
+  {k:'staff',        name:'教职工总数',    unit:'人',  loose:0.10, tight:0.20, type:'raw'},
+  {k:'studentTeacherRatio',name:'师生比',  unit:'倍',  loose:0.15, tight:0.30, type:'der', dec:2},
+
+  {section:'收入'},
+  {k:'revTuition',   name:'学费收入',      unit:'万',  loose:0.15, tight:0.30, type:'raw'},
+  {k:'revenue',      name:'营业收入',      unit:'万',  loose:0.15, tight:0.30, type:'der', total:true},
+
+  {section:'成本'},
+  {k:'costSalary',   name:'师资薪酬',      unit:'万',  loose:0.15, tight:0.30, type:'der'},
+  {k:'costRent',     name:'场地租金',      unit:'万',  loose:0.15, tight:0.30, type:'der'},
+  {k:'costUS',       name:'美国费用',      unit:'万',  loose:0.15, tight:0.30, type:'der'},
+  {k:'cost',         name:'营业成本',      unit:'万',  loose:0.15, tight:0.30, type:'der', total:true},
+
+  {section:'利润'},
+  {k:'opProfit',     name:'营业利润',      unit:'万',  loose:0.15, tight:0.30, type:'der', total:true},
+  {k:'profitMargin', name:'营业利润率',    unit:'%',   loose:3,    tight:6,    type:'der', isAbs:true, dec:2},
+  {k:'cashProfit',   name:'现金流利润',    unit:'万',  loose:0.15, tight:0.30, type:'der', total:true},
+];
+
+function renderVertical(){
+  const grid = document.getElementById('verticalGrid');
+  const showCampuses = ['蛇口','福田'];
+  let html = '';
+  for(const c of showCampuses){
+    html += `<div class="card v-campus" style="background:var(--bg-elev)"><h3>${c}校区</h3>`;
+    html += `<div class="v-row head"><div>指标</div><div style="text-align:right">26-27</div><div style="text-align:right">27-28</div><div style="text-align:right">28-29</div><div style="text-align:right">趋势</div></div>`;
+    for(const row of VERT_ROWS){
+      if(row.section){
+        html += `<div class="v-row section"><div class="lab">${row.section}</div><div></div><div></div><div></div><div></div></div>`;
+        continue;
+      }
+      const seq = YEARS.map(y=>{
+        const raw = STATE[c][y];
+        if(!raw) return null;
+        if(row.type==='raw') return raw[row.k];
+        return derive(raw)[row.k];
+      });
+      const cls = row.total ? 'total' : (row.k.startsWith('cost')||row.k.startsWith('rev')||row.k.startsWith('op')||row.k.startsWith('cash')||row.k.startsWith('profit'))?'derived':'';
+      // 渲染3列+sparkline
+      const cells = seq.map((v,i)=>{
+        if(v==null) return `<div class="vv empty">—</div>`;
+        const dec = row.dec ?? (row.unit==='%'?2:row.unit==='人'?0:2);
+        const disp = row.unit==='%' ? v.toFixed(dec) : row.unit==='人' ? Math.round(v) : fmtRaw(v,dec);
+        // 同比标记
+        let mark = '';
+        if(i>0 && seq[i-1]!=null){
+          let dev;
+          if(row.isAbs){ dev = Math.abs(v - seq[i-1]); }
+          else { dev = seq[i-1] ? Math.abs(v-seq[i-1])/Math.abs(seq[i-1]) : 0; }
+          if(dev >= row.tight) mark = ' style="color:var(--red);font-weight:600"';
+          else if(dev >= row.loose) mark = ' style="color:var(--amber);font-weight:600"';
+        }
+        return `<div class="vv"${mark}>${disp}</div>`;
+      }).join('');
+      // 趋势spark
+      const validVals = seq.filter(v=>v!=null);
+      let spark = '<div class="delta" style="color:var(--text-mute)">—</div>';
+      if(validVals.length>=2){
+        const max = Math.max(...validVals.map(Math.abs));
+        const sparkBars = seq.map(v=>{
+          if(v==null) return '<i style="background:var(--border);opacity:.3"></i>';
+          const h = max ? Math.max(2, Math.abs(v)/max*16) : 2;
+          return `<i style="height:${h}px"></i>`;
+        }).join('');
+        // 整体趋势判断
+        const last = validVals[validVals.length-1], first = validVals[0];
+        let sparkCls = '';
+        if(first){
+          const totalDev = Math.abs(last-first)/Math.abs(first);
+          if(totalDev >= row.tight*1.5) sparkCls = 'bad';
+          else if(totalDev >= row.loose*1.5) sparkCls = 'warn';
+        }
+        spark = `<div class="spark ${sparkCls}">${sparkBars}</div>`;
+      }
+      html += `<div class="v-row ${cls}"><div class="lab">${row.name}</div>${cells}${spark}</div>`;
+    }
+    html += '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+/* ───────── I. 渲染 · 异常告警栏 ───────── */
+function renderAlerts(){
+  const board = document.getElementById('alertBoard');
+  const alerts = [];
+  const stats = outlier(curYear);
+
+  // 1. 横向离群（仅当年）
+  for(const c of CAMPUSES){
+    const raw = STATE[c][curYear];
+    if(!raw) continue;
+    const der = derive(raw);
+    const checkFields = [
+      {k:'avgTuition', name:'平均学费', unit:'万元/人'},
+      {k:'profitMargin', name:'营业利润率', unit:'%', val:der.profitMargin},
+      {k:'studentTeacherRatio', name:'师生比', unit:'倍', val:der.studentTeacherRatio},
+      {k:'foreignSalaryAvg', name:'外籍人均薪酬', unit:'万/人', val:der.foreignSalaryAvg},
+      {k:'profitPerStudent', name:'生均利润', unit:'万/人', val:der.profitPerStudent},
+    ];
+    for(const f of checkFields){
+      const v = f.val ?? raw[f.k];
+      const stat = stats[f.k];
+      if(!stat || stat.mean==null) continue;
+      const dev = Math.abs(v - stat.mean) / Math.abs(stat.mean);
+      if(dev >= 0.20){
+        const lv = dev >= 0.35 ? 'red' : 'amber';
+        alerts.push({
+          lv, type:'横向离群',
+          msg:`<b>${c}</b> · ${f.name} ${fmtRaw(v,2)} ${f.unit}（同期均值 ${fmtRaw(stat.mean,2)} ${f.unit}）`,
+          delta:`偏离 ${(dev*100).toFixed(0)}%`
+        });
+      }
+    }
+  }
+
+  // 2. 纵向同比突变（仅蛇口/福田，因有部分多年数据时启用）
+  for(const c of ['蛇口','福田']){
+    for(const k of ['students','revTuition','revenue','cost','opProfit','profitMargin']){
+      const seq = YEARS.map(y=>{
+        const raw = STATE[c][y]; if(!raw) return null;
+        if(['students','revTuition'].includes(k)) return raw[k];
+        return derive(raw)[k];
+      });
+      for(let i=1;i<seq.length;i++){
+        if(seq[i-1]==null || seq[i]==null) continue;
+        const dev = Math.abs(seq[i]-seq[i-1]) / Math.abs(seq[i-1]||1);
+        if(dev >= 0.15){
+          const lv = dev >= 0.30 ? 'red' : 'amber';
+          alerts.push({lv, type:'纵向突变',
+            msg:`<b>${c}</b> · ${k} 从 ${YEARS[i-1]} 到 ${YEARS[i]} 变化 ${(dev*100).toFixed(0)}%`,
+            delta:`${seq[i-1].toFixed(0)} → ${seq[i].toFixed(0)}`});
+        }
+      }
+    }
+  }
+
+  // 3. 自检规则违规
+  for(const c of CAMPUSES){
+    if(!STATE[c][curYear]) continue;
+    const checks = auditRules(c, curYear);
+    for(const a of checks){
+      if(a.ok==='bad' || a.ok==='warn'){
+        alerts.push({
+          lv: a.ok==='bad'?'red':'amber',
+          type:'计算自检',
+          msg:`<b>${c}</b> · ${a.type}：${a.formula}`,
+          delta:a.delta
+        });
+      }
+    }
+  }
+
+  // 4. 数据完整度
+  const filled = CAMPUSES.filter(c=>STATE[c][curYear]).length;
+  if(filled < CAMPUSES.length){
+    alerts.push({lv:'blue', type:'数据完整度',
+      msg:`当年仅 <b>${filled}/${CAMPUSES.length}</b> 个校区已填报，建议补全后再做集团分析`,
+      delta:`${(filled/CAMPUSES.length*100).toFixed(0)}%`});
+  }
+
+  // 排序：red > amber > blue
+  alerts.sort((a,b)=>({red:0,amber:1,blue:2}[a.lv]-{red:0,amber:1,blue:2}[b.lv]));
+
+  // 统计
+  const cR = alerts.filter(a=>a.lv==='red').length;
+  const cA = alerts.filter(a=>a.lv==='amber').length;
+  const cB = alerts.filter(a=>a.lv==='blue').length;
+  document.getElementById('cntRed').textContent = cR;
+  document.getElementById('cntAmber').textContent = cA;
+  document.getElementById('cntBlue').textContent = cB;
+  document.getElementById('cntOk').textContent = Math.max(0, filled*8 - cR - cA);
+  document.getElementById('alertSummary').textContent = `共 ${alerts.length} 项 · 严重 ${cR} · 警告 ${cA} · 提示 ${cB}`;
+
+  if(alerts.length===0){
+    board.innerHTML = '<div class="alert-empty">✓ 当前所有指标均通过自动稽核</div>';
+    return;
+  }
+  const icons = {red:'🔴', amber:'🟡', blue:'🔵'};
+  board.innerHTML = alerts.map(a=>`
+    <div class="alert-item lv-${a.lv}">
+      <div class="icon">${icons[a.lv]}</div>
+      <div class="tag">${a.type}</div>
+      <div class="msg">${a.msg}</div>
+      <div class="delta">${a.delta}</div>
+    </div>
+  `).join('');
+}
+
+/* ───────── J. 渲染 · 自检列表 ───────── */
+function renderAudit(){
+  const list = document.getElementById('auditList');
+  const items = [];
+  for(const c of CAMPUSES){
+    if(!STATE[c][curYear]) continue;
+    const checks = auditRules(c, curYear);
+    for(const a of checks){
+      items.push({campus:c, ...a});
+    }
+  }
+  if(items.length===0){
+    list.innerHTML = '<div class="alert-empty">尚无可校验数据，请先填报。</div>';
+    return;
+  }
+  // 排序：bad > warn > ok
+  items.sort((a,b)=>({bad:0,warn:1,ok:2}[a.ok]-{bad:0,warn:1,ok:2}[b.ok]));
+  const icons = {ok:'✓', warn:'⚠', bad:'✗'};
+  list.innerHTML = items.map(a=>`
+    <div class="audit-item ${a.ok}">
+      <div class="ic">${icons[a.ok]}</div>
+      <div class="who">${a.campus} · ${a.type}</div>
+      <div class="formula">${a.formula}</div>
+      <div class="delta">${a.delta}</div>
+    </div>
+  `).join('');
+}
+
+/* ───────── K. 编辑事件 ───────── */
+function bindEdits(){
+  document.querySelectorAll('#matrixTable input').forEach(inp=>{
+    inp.addEventListener('change', onEdit);
+    inp.addEventListener('blur', onEdit);
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') inp.blur(); });
+  });
+}
+function onEdit(e){
+  const inp = e.target;
+  const c = inp.dataset.c, y = inp.dataset.y, k = inp.dataset.k;
+  const v = parseFloat(inp.value.replace(/,/g,''));
+  if(!isNaN(v)){
+    STATE[c][y][k] = v;
+  }
+  renderAll();
+  // 保留焦点位置
+  setTimeout(()=>{
+    const re = document.querySelector(`#matrixTable input[data-c="${c}"][data-y="${y}"][data-k="${k}"]`);
+    if(re) re.focus();
+  }, 50);
+}
+
+/* ───────── L. 全局渲染入口 ───────── */
+function renderAll(){
+  renderMatrix();
+  renderVertical();
+  renderAlerts();
+  renderAudit();
+  applyViewMode();
+}
+function applyViewMode(){
+  if(viewMode!=='alertOnly') return;
+  // 隐藏没有任何告警的行
+  document.querySelectorAll('#matrixTable tbody tr[data-key]').forEach(tr=>{
+    const hasAlert = tr.querySelector('.is-outlier-red, .is-outlier-amber, .is-mismatch');
+    tr.style.display = hasAlert ? '' : 'none';
+  });
+}
+
+/* ───────── M. 工具栏事件 ───────── */
+document.getElementById('yearSelect').addEventListener('change', e=>{
+  curYear = e.target.value; renderAll();
+});
+document.getElementById('btnAll').addEventListener('click', ()=>{
+  viewMode='all';
+  document.getElementById('btnAll').classList.add('is-active');
+  document.getElementById('btnAlertOnly').classList.remove('is-active');
+  renderAll();
+});
+document.getElementById('btnAlertOnly').addEventListener('click', ()=>{
+  viewMode='alertOnly';
+  document.getElementById('btnAlertOnly').classList.add('is-active');
+  document.getElementById('btnAll').classList.remove('is-active');
+  renderAll();
+});
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  if(confirm('确定恢复所有数据为最初填报值？')){
+    STATE = JSON.parse(JSON.stringify(RAW));
+    renderAll();
+  }
+});
+
+/* 启动 */
+renderAll();
+</script>
+
+</body>
+</html>
