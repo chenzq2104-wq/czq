@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FINANCIAL TERMINAL — 个人财务分析仪表板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* —— 语义色体系 —— */
+    --bg:        #080d1a;
+    --bg-card:   #0d1426;
+    --bg-elev:   #111a30;
+    --border:    #1c2747;
+    --border-soft:#162038;
+    --text:      #e6ecff;
+    --text-dim:  #7a89b3;
+    --text-mute: #4a5878;
+
+    --green:  #00d4a8;
+    --red:    #ff5263;
+    --amber:  #f5a623;
+    --blue:   #4a9eff;
+    --purple: #8b6ef7;
+
+    --green-glow:  rgba(0,212,168,.15);
+    --red-glow:    rgba(255,82,99,.15);
+    --amber-glow:  rgba(245,166,35,.15);
+    --blue-glow:   rgba(74,158,255,.15);
+    --purple-glow: rgba(139,110,247,.15);
+
+    --mono: 'IBM Plex Mono', 'Menlo', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  body{
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(74,158,255,.06), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(139,110,247,.05), transparent 40%);
+    min-height:100vh;
+    padding:24px;
+  }
+  .terminal{max-width:1440px;margin:0 auto}
+
+  /* —— 通用卡片 —— */
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card-title{
+    font-family:var(--mono);
+    font-size:10px;
+    font-weight:500;
+    letter-spacing:2px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    margin-bottom:16px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .card-title::before{
+    content:'';width:4px;height:4px;border-radius:50%;background:var(--blue);
+    box-shadow:0 0 8px var(--blue);
+  }
+  .card-title .badge{
+    margin-left:auto;
+    font-size:9px;
+    color:var(--text-mute);
+    border:1px solid var(--border);
+    padding:2px 6px;
+    border-radius:2px;
+  }
+
+  /* ============ 1. HEADER ============ */
+  header.topbar{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    padding:8px 4px 24px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:24px;
+    gap:24px;
+    flex-wrap:wrap;
+  }
+  .brand h1{
+    font-family:var(--display);
+    font-weight:800;
+    font-size:32px;
+    letter-spacing:-1px;
+    line-height:1;
+    color:var(--text);
+  }
+  .brand h1 .accent{color:var(--amber)}
+  .brand .sub{
+    font-size:11px;color:var(--text-dim);
+    letter-spacing:3px;margin-top:8px;
+    text-transform:uppercase;
+  }
+  .meta{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+  .meta-item{font-size:11px;color:var(--text-dim);text-align:right}
+  .meta-item .v{display:block;color:var(--text);font-size:13px;letter-spacing:1px;margin-top:2px}
+  .confidential{
+    font-size:10px;letter-spacing:3px;
+    color:var(--red);
+    border:1px solid var(--red);
+    padding:6px 12px;
+    background:var(--red-glow);
+    animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+  .live-dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--green);box-shadow:0 0 8px var(--green);
+    margin-right:6px;animation:blink 1.6s infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ============ 通用 GRID ============ */
+  .row{display:grid;gap:16px;margin-bottom:16px}
+  .row-4{grid-template-columns:repeat(4,1fr)}
+  .row-2{grid-template-columns:repeat(2,1fr)}
+  @media (max-width:980px){
+    .row-4{grid-template-columns:repeat(2,1fr)}
+    .row-2{grid-template-columns:1fr}
+  }
+
+  /* ============ 2. 核心指标行 ============ */
+  .kpi{padding:18px 20px}
+  .kpi .label{font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase}
+  .kpi .value{
+    font-family:var(--display);font-weight:800;
+    font-size:34px;letter-spacing:-1px;
+    margin:10px 0 4px;line-height:1.1;
+  }
+  .kpi .unit{font-family:var(--mono);font-size:14px;color:var(--text-dim);margin-left:4px;font-weight:400}
+  .kpi .delta{font-size:11px;color:var(--text-dim)}
+  .kpi .delta .up{color:var(--green)}
+  .kpi .delta .down{color:var(--red)}
+  .kpi.is-amber .value{color:var(--amber)}
+  .kpi.is-green .value{color:var(--green)}
+  .kpi.is-red   .value{color:var(--red)}
+  .kpi.is-blue  .value{color:var(--blue)}
+  .kpi .bar{
+    height:3px;border-radius:2px;background:var(--border);
+    margin-top:14px;overflow:hidden;position:relative;
+  }
+  .kpi .bar > i{
+    display:block;height:100%;border-radius:2px;
+    transition:width 1.2s cubic-bezier(.2,.8,.2,1);
+  }
+  .kpi.is-amber .bar > i{background:var(--amber)}
+  .kpi.is-green .bar > i{background:var(--green)}
+  .kpi.is-red   .bar > i{background:var(--red)}
+  .kpi.is-blue  .bar > i{background:var(--blue)}
+
+  /* ============ 3. 收支对比 横向条形 ============ */
+  .bars{display:flex;flex-direction:column;gap:14px}
+  .bar-row{display:flex;align-items:center;gap:12px;font-size:12px}
+  .bar-row .name{width:88px;color:var(--text-dim);font-size:11px;flex-shrink:0}
+  .bar-row .track{flex:1;height:8px;background:var(--bg-elev);border-radius:3px;overflow:hidden;position:relative}
+  .bar-row .fill{
+    height:100%;border-radius:3px;
+    transition:width 1.4s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 0 12px currentColor;
+  }
+  .bar-row .num{width:96px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px;color:var(--text);flex-shrink:0}
+  .bar-row .pct{width:48px;text-align:right;color:var(--text-mute);font-size:10px;flex-shrink:0}
+  .c-blue   {color:var(--blue);background:var(--blue)}
+  .c-purple {color:var(--purple);background:var(--purple)}
+  .c-green  {color:var(--green);background:var(--green)}
+  .c-amber  {color:var(--amber);background:var(--amber)}
+  .c-red    {color:var(--red);background:var(--red)}
+
+  .summary-strip{
+    display:flex;justify-content:space-between;
+    margin-top:18px;padding-top:16px;
+    border-top:1px dashed var(--border);
+    font-size:11px;color:var(--text-dim);
+  }
+  .summary-strip strong{color:var(--text);font-weight:500}
+
+  /* ============ 4. 历史柱图 + 净资产明细 ============ */
+  .history{display:flex;align-items:flex-end;gap:14px;height:160px;padding:8px 4px 0}
+  .history .col{
+    flex:1;display:flex;flex-direction:column;align-items:center;
+    gap:8px;height:100%;justify-content:flex-end;position:relative;
+  }
+  .history .num{font-size:11px;color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+  .history .bar{
+    width:100%;max-width:42px;
+    background:linear-gradient(180deg,var(--blue),rgba(74,158,255,.2));
+    border-radius:2px 2px 0 0;
+    transition:height 1.4s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 0 12px var(--blue-glow);
+    min-height:4px;
+  }
+  .history .col.is-current .bar{
+    background:linear-gradient(180deg,var(--amber),rgba(245,166,35,.2));
+    box-shadow:0 0 16px var(--amber);
+  }
+  .history .col.is-current .num{color:var(--amber)}
+  .history .year{font-size:10px;color:var(--text-mute);letter-spacing:1px;margin-top:6px}
+  .history-axis{
+    display:flex;justify-content:space-between;
+    margin-top:4px;padding:0 4px;
+    font-size:9px;color:var(--text-mute);letter-spacing:1px;
+    border-top:1px solid var(--border-soft);padding-top:8px;
+  }
+
+  /* T型账户 */
+  .t-account{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .t-side{padding:14px}
+  .t-side.left {background:linear-gradient(135deg,var(--green-glow),transparent);border-right:1px solid var(--border)}
+  .t-side.right{background:linear-gradient(135deg,var(--red-glow),transparent)}
+  .t-head{font-size:10px;letter-spacing:2px;margin-bottom:10px}
+  .t-side.left  .t-head{color:var(--green)}
+  .t-side.right .t-head{color:var(--red)}
+  .t-line{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);padding:4px 0;border-bottom:1px dashed var(--border-soft)}
+  .t-line:last-child{border-bottom:none}
+  .t-line span:last-child{color:var(--text);font-variant-numeric:tabular-nums}
+  .t-total{
+    margin-top:18px;padding:14px;
+    background:var(--bg-elev);
+    border:1px solid var(--amber);
+    border-radius:4px;
+    text-align:center;
+  }
+  .t-total .lbl{font-size:10px;letter-spacing:3px;color:var(--amber);margin-bottom:6px}
+  .t-total .val{font-family:var(--display);font-weight:800;font-size:32px;color:var(--amber);letter-spacing:-1px}
+  .t-total .unit{font-family:var(--mono);font-size:12px;color:var(--text-dim);margin-left:4px}
+
+  /* ============ 5. 债务 + 风险矩阵 ============ */
+  .debt-list{display:flex;flex-direction:column;gap:14px}
+  .debt-item{
+    background:var(--bg-elev);border:1px solid var(--border);
+    padding:12px 14px;border-radius:4px;
+  }
+  .debt-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .debt-name{font-size:12px;color:var(--text);font-weight:500;letter-spacing:.5px}
+  .debt-tag{font-size:9px;color:var(--text-mute);letter-spacing:1.5px}
+  .debt-meta{display:flex;gap:18px;font-size:10px;color:var(--text-dim);margin-bottom:10px;flex-wrap:wrap}
+  .debt-meta b{color:var(--text);font-weight:500}
+  .debt-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;display:flex}
+  .debt-paid{background:var(--green);height:100%;transition:width 1.4s ease}
+  .debt-left{background:var(--red);height:100%;opacity:.5;transition:width 1.4s ease}
+  .debt-foot{display:flex;justify-content:space-between;font-size:10px;color:var(--text-mute);margin-top:6px}
+
+  /* 风险矩阵 */
+  .risk-grid{display:flex;flex-direction:column;gap:18px}
+  .risk-row{display:grid;grid-template-columns:130px 1fr 70px;gap:12px;align-items:center}
+  .risk-row .name{font-size:11px;color:var(--text-dim);letter-spacing:1px}
+  .risk-dots{display:flex;gap:8px;align-items:center}
+  .risk-dots .dot{
+    width:14px;height:14px;border-radius:50%;
+    background:var(--bg-elev);border:1px solid var(--border);
+    transition:all .4s ease;
+  }
+  .risk-dots[data-level="1"] .dot:nth-child(-n+1),
+  .risk-dots[data-level="2"] .dot:nth-child(-n+2),
+  .risk-dots[data-level="3"] .dot:nth-child(-n+3),
+  .risk-dots[data-level="4"] .dot:nth-child(-n+4),
+  .risk-dots[data-level="5"] .dot:nth-child(-n+5){
+    background:var(--lvl-color);border-color:var(--lvl-color);
+    box-shadow:0 0 8px var(--lvl-color);
+  }
+  .risk-row[data-color="green"]  .risk-dots{--lvl-color:var(--green)}
+  .risk-row[data-color="amber"]  .risk-dots{--lvl-color:var(--amber)}
+  .risk-row[data-color="red"]    .risk-dots{--lvl-color:var(--red)}
+  .risk-row[data-color="blue"]   .risk-dots{--lvl-color:var(--blue)}
+  .risk-tag{
+    font-size:10px;letter-spacing:1.5px;text-align:right;
+    padding:3px 6px;border-radius:2px;
+  }
+  .risk-row[data-color="green"]  .risk-tag{color:var(--green);background:var(--green-glow)}
+  .risk-row[data-color="amber"]  .risk-tag{color:var(--amber);background:var(--amber-glow)}
+  .risk-row[data-color="red"]    .risk-tag{color:var(--red);background:var(--red-glow)}
+  .risk-row[data-color="blue"]   .risk-tag{color:var(--blue);background:var(--blue-glow)}
+
+  .legend{
+    display:flex;gap:14px;font-size:9px;color:var(--text-mute);
+    margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);
+    letter-spacing:1px;
+  }
+  .legend span{display:flex;align-items:center;gap:4px}
+  .legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+  /* ============ 6. 专业建议 ============ */
+  .advice-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  @media (max-width:780px){.advice-grid{grid-template-columns:1fr}}
+  .advice{
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:4px;padding:18px;position:relative;
+    transition:border-color .3s;
+  }
+  .advice:hover{border-color:var(--blue)}
+  .advice .num{
+    font-family:var(--display);font-weight:800;
+    font-size:36px;color:var(--text-mute);
+    line-height:1;letter-spacing:-2px;
+  }
+  .advice .topic{
+    font-size:11px;letter-spacing:2px;color:var(--blue);
+    margin:8px 0 10px;text-transform:uppercase;
+  }
+  .advice .title{
+    font-size:14px;color:var(--text);font-weight:500;
+    margin-bottom:8px;letter-spacing:.5px;
+  }
+  .advice .desc{font-size:11px;color:var(--text-dim);line-height:1.7}
+  .advice.is-priority{border-color:var(--amber)}
+  .advice.is-priority .topic{color:var(--amber)}
+  .advice.is-priority::before{
+    content:'PRIORITY';position:absolute;top:14px;right:14px;
+    font-size:8px;letter-spacing:2px;color:var(--amber);
+    border:1px solid var(--amber);padding:2px 5px;border-radius:2px;
+  }
+  .advice.is-warn{border-color:var(--red)}
+  .advice.is-warn .topic{color:var(--red)}
+  .advice.is-warn::before{
+    content:'URGENT';position:absolute;top:14px;right:14px;
+    font-size:8px;letter-spacing:2px;color:var(--red);
+    border:1px solid var(--red);padding:2px 5px;border-radius:2px;
+  }
+
+  /* ============ 7. 综合评分 ============ */
+  .grade{
+    text-align:center;padding:24px 18px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:6px;position:relative;
+    overflow:hidden;
+  }
+  .grade::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(circle at 50% 0%, var(--g-glow), transparent 60%);
+    opacity:.5;pointer-events:none;
+  }
+  .grade .lbl{font-size:10px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase}
+  .grade .letter{
+    font-family:var(--display);font-weight:800;
+    font-size:72px;line-height:1;letter-spacing:-3px;
+    margin:14px 0 6px;color:var(--g-color);
+    text-shadow:0 0 20px var(--g-glow);
+    position:relative;
+  }
+  .grade .desc{font-size:11px;color:var(--text-dim);margin-bottom:12px}
+  .grade .score{
+    font-size:11px;color:var(--text);font-variant-numeric:tabular-nums;
+    border-top:1px dashed var(--border);padding-top:12px;
+    letter-spacing:1px;
+  }
+  .grade.g-A{--g-color:var(--green);--g-glow:var(--green-glow)}
+  .grade.g-B{--g-color:var(--blue);--g-glow:var(--blue-glow)}
+  .grade.g-C{--g-color:var(--amber);--g-glow:var(--amber-glow)}
+  .grade.g-D{--g-color:var(--red);--g-glow:var(--red-glow)}
+
+  /* ============ 8. FOOTER ============ */
+  footer.disclaim{
+    margin-top:32px;padding:20px 4px;
+    border-top:1px solid var(--border);
+    font-size:10px;color:var(--text-mute);letter-spacing:.5px;
+    line-height:1.8;
+  }
+  footer.disclaim h4{
+    font-family:var(--mono);font-size:10px;font-weight:600;
+    color:var(--text-dim);letter-spacing:2px;margin:8px 0 4px;
+    text-transform:uppercase;
+  }
+  footer .sig{
+    margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+    color:var(--text-mute);
+  }
+
+  /* 滚动条美化 */
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--text-mute)}
+</style>
+</head>
+<body>
+<div class="terminal">
+
+  <!-- ========== 1. HEADER ========== -->
+  <header class="topbar">
+    <div class="brand">
+      <h1>FINANCIAL <span class="accent">TERMINAL</span></h1>
+      <div class="sub">Personal Wealth Diagnostic Report · v2026.05</div>
+    </div>
+    <div class="meta">
+      <div class="meta-item">
+        <span class="live-dot"></span>LIVE FEED
+        <span class="v">2026-05-28 · 周四</span>
+      </div>
+      <div class="meta-item">
+        ANALYST ID
+        <span class="v">KIRO-FIN-001</span>
+      </div>
+      <div class="confidential">⚠ CONFIDENTIAL</div>
+    </div>
+  </header>
+
+  <!-- ========== 2. 核心指标行 ========== -->
+  <div class="row row-4">
+    <div class="card kpi is-amber">
+      <div class="label">净资产 NET WORTH</div>
+      <div class="value">186.5<span class="unit">万元</span></div>
+      <div class="delta">YoY <span class="up">+12.4%</span> · 较上年 +20.6 万</div>
+      <div class="bar"><i style="width:74%"></i></div>
+    </div>
+    <div class="card kpi is-green">
+      <div class="label">月盈余 MONTHLY SURPLUS</div>
+      <div class="value">8,420<span class="unit">元</span></div>
+      <div class="delta">储蓄率 <span class="up">28.1%</span> · 优于同龄 P75</div>
+      <div class="bar"><i style="width:56%"></i></div>
+    </div>
+    <div class="card kpi is-blue">
+      <div class="label">应急储备时长 EMERGENCY FUND</div>
+      <div class="value">5.2<span class="unit">月</span></div>
+      <div class="delta">现金等价物 / 月支出 · 推荐 6 月</div>
+      <div class="bar"><i style="width:87%"></i></div>
+    </div>
+    <div class="card kpi is-red">
+      <div class="label">还贷负担率 DTI RATIO</div>
+      <div class="value">38.6<span class="unit">%</span></div>
+      <div class="delta"><span class="down">⚠ 超警戒线</span> · 健康值 &lt; 35%</div>
+      <div class="bar"><i style="width:77%"></i></div>
+    </div>
+  </div>
+
+  <!-- ========== 3. 收支对比行 ========== -->
+  <div class="row row-2">
+    <!-- 收入结构 -->
+    <div class="card">
+      <div class="card-title">收入结构 / INCOME COMPOSITION<span class="badge">月度均值</span></div>
+      <div class="bars">
+        <div class="bar-row">
+          <div class="name">主业薪资</div>
+          <div class="track"><div class="fill c-blue" style="width:78%"></div></div>
+          <div class="num">23,400 元</div>
+          <div class="pct">78%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">副业稿费</div>
+          <div class="track"><div class="fill c-purple" style="width:14%"></div></div>
+          <div class="num">4,200 元</div>
+          <div class="pct">14%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">理财收益</div>
+          <div class="track"><div class="fill c-green" style="width:6%"></div></div>
+          <div class="num">1,800 元</div>
+          <div class="pct">6%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">其他</div>
+          <div class="track"><div class="fill c-amber" style="width:2%"></div></div>
+          <div class="num">600 元</div>
+          <div class="pct">2%</div>
+        </div>
+      </div>
+      <div class="summary-strip">
+        <span>合计 / TOTAL</span>
+        <span><strong>30,000 元/月</strong> · 36.0 万/年</span>
+      </div>
+    </div>
+
+    <!-- 支出拆解 -->
+    <div class="card">
+      <div class="card-title">支出拆解 / EXPENSE BREAKDOWN<span class="badge">月度均值</span></div>
+      <div class="bars">
+        <div class="bar-row">
+          <div class="name">房贷月供</div>
+          <div class="track"><div class="fill c-red" style="width:54%"></div></div>
+          <div class="num">11,580 元</div>
+          <div class="pct">54%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">日常生活</div>
+          <div class="track"><div class="fill c-amber" style="width:23%"></div></div>
+          <div class="num">5,000 元</div>
+          <div class="pct">23%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">教育/育儿</div>
+          <div class="track"><div class="fill c-purple" style="width:13%"></div></div>
+          <div class="num">2,800 元</div>
+          <div class="pct">13%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">保险保障</div>
+          <div class="track"><div class="fill c-blue" style="width:6%"></div></div>
+          <div class="num">1,200 元</div>
+          <div class="pct">6%</div>
+        </div>
+        <div class="bar-row">
+          <div class="name">休闲娱乐</div>
+          <div class="track"><div class="fill c-green" style="width:4%"></div></div>
+          <div class="num">1,000 元</div>
+          <div class="pct">4%</div>
+        </div>
+      </div>
+      <div class="summary-strip">
+        <span>合计 / TOTAL</span>
+        <span><strong>21,580 元/月</strong> · 25.9 万/年</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 4. 历史趋势 + 净资产明细 ========== -->
+  <div class="row row-2">
+    <!-- 净资产历史 -->
+    <div class="card">
+      <div class="card-title">净资产历史 / NET WORTH TRAJECTORY<span class="badge">5-YEAR · 万元</span></div>
+      <div class="history">
+        <div class="col">
+          <div class="num">82.1</div>
+          <div class="bar" style="height:44%"></div>
+          <div class="year">2021</div>
+        </div>
+        <div class="col">
+          <div class="num">108.6</div>
+          <div class="bar" style="height:58%"></div>
+          <div class="year">2022</div>
+        </div>
+        <div class="col">
+          <div class="num">142.3</div>
+          <div class="bar" style="height:76%"></div>
+          <div class="year">2023</div>
+        </div>
+        <div class="col">
+          <div class="num">165.9</div>
+          <div class="bar" style="height:89%"></div>
+          <div class="year">2024</div>
+        </div>
+        <div class="col">
+          <div class="num">175.1</div>
+          <div class="bar" style="height:94%"></div>
+          <div class="year">2025</div>
+        </div>
+        <div class="col is-current">
+          <div class="num">186.5</div>
+          <div class="bar" style="height:100%"></div>
+          <div class="year">2026E</div>
+        </div>
+      </div>
+      <div class="history-axis">
+        <span>5Y CAGR · +17.8%</span>
+        <span>累计增长 · +127.2%</span>
+        <span>预测线 ▲ AMBER</span>
+      </div>
+    </div>
+
+    <!-- 净资产明细 T 型 -->
+    <div class="card">
+      <div class="card-title">净资产明细 / BALANCE SHEET<span class="badge">截至 2026-05</span></div>
+      <div class="t-account">
+        <div class="t-side left">
+          <div class="t-head">▲ 资产 ASSETS</div>
+          <div class="t-line"><span>自住房产</span><span>320.0 万</span></div>
+          <div class="t-line"><span>现金存款</span><span>11.2 万</span></div>
+          <div class="t-line"><span>基金/股票</span><span>28.5 万</span></div>
+          <div class="t-line"><span>公积金</span><span>14.8 万</span></div>
+          <div class="t-line"><span>其他资产</span><span>2.0 万</span></div>
+          <div class="t-line"><span><strong>小计</strong></span><span><strong>376.5 万</strong></span></div>
+        </div>
+        <div class="t-side right">
+          <div class="t-head">▼ 负债 LIABILITIES</div>
+          <div class="t-line"><span>房贷余额</span><span>178.4 万</span></div>
+          <div class="t-line"><span>消费贷</span><span>8.6 万</span></div>
+          <div class="t-line"><span>信用卡</span><span>3.0 万</span></div>
+          <div class="t-line"><span>—</span><span>—</span></div>
+          <div class="t-line"><span>—</span><span>—</span></div>
+          <div class="t-line"><span><strong>小计</strong></span><span><strong>190.0 万</strong></span></div>
+        </div>
+      </div>
+      <div class="t-total">
+        <div class="lbl">◆ 净值 NET WORTH</div>
+        <div class="val">186.5<span class="unit">万元</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 5. 债务状况 + 风险矩阵 ========== -->
+  <div class="row row-2">
+    <!-- 债务 -->
+    <div class="card">
+      <div class="card-title">债务状况 / DEBT POSITION<span class="badge">3 ACTIVE LOANS</span></div>
+      <div class="debt-list">
+        <div class="debt-item">
+          <div class="debt-head">
+            <div class="debt-name">商业房贷 · 工行</div>
+            <div class="debt-tag">利率 4.30% · 30Y</div>
+          </div>
+          <div class="debt-meta">
+            <span>原始 <b>200 万</b></span>
+            <span>已还 <b>21.6 万</b></span>
+            <span>剩余 <b>178.4 万</b></span>
+            <span>月供 <b>10,420</b></span>
+          </div>
+          <div class="debt-track">
+            <div class="debt-paid" style="width:10.8%"></div>
+            <div class="debt-left" style="width:89.2%"></div>
+          </div>
+          <div class="debt-foot"><span>已偿还 10.8%</span><span>剩余 28.4 年</span></div>
+        </div>
+        <div class="debt-item">
+          <div class="debt-head">
+            <div class="debt-name">消费贷 · 招行</div>
+            <div class="debt-tag">利率 5.85% · 5Y</div>
+          </div>
+          <div class="debt-meta">
+            <span>原始 <b>15 万</b></span>
+            <span>已还 <b>6.4 万</b></span>
+            <span>剩余 <b>8.6 万</b></span>
+            <span>月供 <b>1,160</b></span>
+          </div>
+          <div class="debt-track">
+            <div class="debt-paid" style="width:42.7%"></div>
+            <div class="debt-left" style="width:57.3%"></div>
+          </div>
+          <div class="debt-foot"><span>已偿还 42.7%</span><span>剩余 2.5 年</span></div>
+        </div>
+        <div class="debt-item">
+          <div class="debt-head">
+            <div class="debt-name">信用卡循环 · 多卡</div>
+            <div class="debt-tag">利率 18.25% · 循环</div>
+          </div>
+          <div class="debt-meta">
+            <span>当期账单 <b>3.0 万</b></span>
+            <span>最低还 <b>3,000</b></span>
+            <span>建议 <b>全额还</b></span>
+          </div>
+          <div class="debt-track">
+            <div class="debt-paid" style="width:0%"></div>
+            <div class="debt-left" style="width:100%"></div>
+          </div>
+          <div class="debt-foot"><span style="color:var(--red)">⚠ 高息债 · 优先清偿</span><span>—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 风险矩阵 -->
+    <div class="card">
+      <div class="card-title">风险矩阵 / RISK MATRIX<span class="badge">5-DIM SCORE</span></div>
+      <div class="risk-grid">
+        <div class="risk-row" data-color="red">
+          <div class="name">流动性风险</div>
+          <div class="risk-dots" data-level="4">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">HIGH</div>
+        </div>
+        <div class="risk-row" data-color="red">
+          <div class="name">杠杆风险</div>
+          <div class="risk-dots" data-level="4">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">HIGH</div>
+        </div>
+        <div class="risk-row" data-color="amber">
+          <div class="name">收入集中度</div>
+          <div class="risk-dots" data-level="3">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">MEDIUM</div>
+        </div>
+        <div class="risk-row" data-color="amber">
+          <div class="name">保障缺口</div>
+          <div class="risk-dots" data-level="3">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">MEDIUM</div>
+        </div>
+        <div class="risk-row" data-color="green">
+          <div class="name">储蓄能力</div>
+          <div class="risk-dots" data-level="2">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">LOW</div>
+        </div>
+        <div class="risk-row" data-color="green">
+          <div class="name">资产增长性</div>
+          <div class="risk-dots" data-level="2">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">LOW</div>
+        </div>
+        <div class="risk-row" data-color="blue">
+          <div class="name">通胀抵御</div>
+          <div class="risk-dots" data-level="3">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="risk-tag">WATCH</div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--green)"></i>低 1-2</span>
+        <span><i style="background:var(--amber)"></i>中 3</span>
+        <span><i style="background:var(--red)"></i>高 4-5</span>
+        <span><i style="background:var(--blue)"></i>观察</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 6. 专业建议 ========== -->
+  <div style="margin:24px 4px 12px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase">
+    ◆ 专业建议 / STRATEGIC RECOMMENDATIONS
+  </div>
+  <div class="advice-grid">
+    <div class="advice is-warn">
+      <div class="num">01</div>
+      <div class="topic">DEBT · 高息债务清偿</div>
+      <div class="title">优先清偿信用卡循环 3.0 万</div>
+      <div class="desc">18.25% 年化远高于任何稳健投资回报。建议从应急金中调拨 3 万一次性结清，可节约年息 ≈5,475 元。</div>
+    </div>
+    <div class="advice is-priority">
+      <div class="num">02</div>
+      <div class="topic">LIQUIDITY · 应急金补足</div>
+      <div class="title">应急储备由 5.2 月提升至 6 月</div>
+      <div class="desc">差额约 1.7 万。建议 3 个月内通过月盈余分批补足至货币基金/T+0 理财，年化 1.8% 左右。</div>
+    </div>
+    <div class="advice">
+      <div class="num">03</div>
+      <div class="topic">INSURANCE · 保障升级</div>
+      <div class="title">补充定寿 + 重疾险至年收入 10 倍</div>
+      <div class="desc">当前保费占比 6%（健康），但保额覆盖不足。建议增加 100 万定寿（年保费约 1,200 元）+ 50 万重疾。</div>
+    </div>
+    <div class="advice">
+      <div class="num">04</div>
+      <div class="topic">DIVERSIFY · 资产多元化</div>
+      <div class="title">权益类配置由 8% 提升至 20%</div>
+      <div class="desc">房产占总资产 85%，过度集中。每月定投宽基 ETF（沪深 300 + 标普 500）3,000 元，3 年再平衡一次。</div>
+    </div>
+    <div class="advice">
+      <div class="num">05</div>
+      <div class="topic">INCOME · 副业现金流</div>
+      <div class="title">副业稿费由 4,200 提升至 8,000</div>
+      <div class="desc">当前主业占比 78%，集中度偏高。利用业余时间稳定副业产出，目标占比 25%，对冲单一雇主风险。</div>
+    </div>
+    <div class="advice">
+      <div class="num">06</div>
+      <div class="topic">TAX · 税优工具</div>
+      <div class="title">个人养老金账户 + 公积金最大化</div>
+      <div class="desc">每年 12,000 元个人养老金可抵税，按当前税率约省 1,440 元/年；同时检视公积金缴存基数，争取上调。</div>
+    </div>
+  </div>
+
+  <!-- ========== 7. 综合评分 ========== -->
+  <div style="margin:32px 4px 12px;font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase">
+    ◆ 综合评分 / OVERALL RATING
+  </div>
+  <div class="row row-4">
+    <div class="grade g-B">
+      <div class="lbl">财富积累</div>
+      <div class="letter">B+</div>
+      <div class="desc">资产增速良好，结构待优化</div>
+      <div class="score">82 / 100</div>
+    </div>
+    <div class="grade g-C">
+      <div class="lbl">债务健康</div>
+      <div class="letter">C</div>
+      <div class="desc">DTI 略超线，需降杠杆</div>
+      <div class="score">68 / 100</div>
+    </div>
+    <div class="grade g-A">
+      <div class="lbl">储蓄纪律</div>
+      <div class="letter">A</div>
+      <div class="desc">28% 储蓄率优于同龄</div>
+      <div class="score">91 / 100</div>
+    </div>
+    <div class="grade g-B">
+      <div class="lbl">综合评级</div>
+      <div class="letter">B</div>
+      <div class="desc">稳健向上 · 待精细管理</div>
+      <div class="score">80 / 100</div>
+    </div>
+  </div>
+
+  <!-- ========== 8. FOOTER ========== -->
+  <footer class="disclaim">
+    <h4>◇ 数据来源 / DATA SOURCES</h4>
+    用户自报数据 · 银行流水（招商/工商）· 公积金管理中心查询 · 基金账户截图（截至 2026-05-25）。
+
+    <h4>◇ 计算假设 / ASSUMPTIONS</h4>
+    [1] 应急储备 = (现金 + 货币基金) / 月均支出；[2] DTI = 月偿债总额 / 税后月收入；[3] 储蓄率 = (收入-支出)/收入；
+    [4] 5Y CAGR 按几何平均计算；[5] 自住房估值取近 6 月同小区成交均价 × 0.92 折扣。
+
+    <h4>◇ 免责声明 / DISCLAIMER</h4>
+    本报告仅基于用户提供的数据进行结构性分析，不构成任何投资、税务或法律建议。市场有风险，决策需谨慎。
+    所有评级、评分、建议均为算法模型输出，不代表真实金融机构意见。请在做出重大财务决策前咨询持牌专业人士。
+
+    <div class="sig">
+      <span>© 2026 KIRO FINANCIAL TERMINAL · ALL RIGHTS RESERVED</span>
+      <span>REPORT-ID: KFT-20260528-PWD-0001</span>
+      <span>SIGNATURE · ▌▌▌▌▌</span>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>
