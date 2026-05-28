@@ -200,6 +200,24 @@
     </div>
   </header>
 
+  <!-- ========== 数据安全提示 ========== -->
+  <div class="card" style="background:linear-gradient(135deg,var(--green-glow),var(--bg-card));border-color:var(--green);margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:14px;font-size:12px">
+      <div style="font-size:24px">🔒</div>
+      <div style="flex:1;line-height:1.7">
+        <div style="font-weight:600;color:var(--green);letter-spacing:1px;margin-bottom:4px">本地运行 · 数据零上传</div>
+        <div style="color:var(--text-dim)">
+          所有数据处理均在你浏览器内存中完成，<b style="color:var(--text)">不会上传任何服务器</b>，刷新页面即清空。
+          页面初始展示为<b style="color:var(--amber)">脱敏示例数据</b>，请通过右上角「📤 导入数据」按钮加载真实数据，本地文件操作，永远不会离开你的电脑。
+        </div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--text-mute)">
+        <div>当前数据来源</div>
+        <div id="dataSource" style="color:var(--amber);font-weight:600;margin-top:4px">示例数据</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== 工具栏 ========== -->
   <div class="toolbar">
     <div class="group">
@@ -213,7 +231,13 @@
     <div class="group">
       <button id="btnAll" class="is-active">全部指标</button>
       <button id="btnAlertOnly">仅看异常</button>
-      <button id="btnReset" class="btn-warn">重置数据</button>
+    </div>
+    <div class="group">
+      <button id="btnImport" style="color:var(--green);border-color:var(--green)">📤 导入数据</button>
+      <button id="btnExport" style="color:var(--blue);border-color:var(--blue)">💾 导出 JSON</button>
+      <button id="btnTemplate" style="color:var(--purple);border-color:var(--purple)">📋 下载 Excel 模板</button>
+      <button id="btnReset" class="btn-warn">重置</button>
+      <input type="file" id="fileInput" accept=".json,.csv" style="display:none">
     </div>
     <div class="spacer"></div>
     <div class="stats" id="statsBar">
@@ -323,39 +347,39 @@ const RAW = {
     nonOpOut:    '营业外支出',
   },
 
-  // 蛇口校区
+  // 蛇口校区（示例数据 · 真实数据请通过"📤 导入"按钮加载）
   '蛇口': {
     '2026-2027': {
-      students:1730, avgTuition:31.99, avgFee:1.13, staff:471,
-      foreignTeacher:147, chineseTeacher:116,
-      revTuition:55064.76, revHobby:12, revExam:0,
-      revMeal:1695, revBus:240, revDorm:0, revOther:14,
-      costSalaryF:9500, costSalaryC:5200,
-      costRentExt:5700, costRentInt:5232, costDormInt:0,
-      costWelfare:1657, costAdminMix:1700,
-      costBOES:1751.06, costBOESopen:0, costBG:7158.42,
-      costMeal:2167.44, costBus:227.20, costDormOp:0,
-      costMgmt:2835, costTax:3.5, costFinance:40,
-      revOtherGain:0, nonOpIn:45, nonOpOut:20,
+      students:1500, avgTuition:30, avgFee:1.0, staff:400,
+      foreignTeacher:120, chineseTeacher:100,
+      revTuition:45000, revHobby:10, revExam:0,
+      revMeal:1500, revBus:200, revDorm:0, revOther:10,
+      costSalaryF:8000, costSalaryC:4500,
+      costRentExt:5000, costRentInt:4500, costDormInt:0,
+      costWelfare:1400, costAdminMix:1500,
+      costBOES:1500, costBOESopen:0, costBG:5850,
+      costMeal:1900, costBus:200, costDormOp:0,
+      costMgmt:2500, costTax:3, costFinance:35,
+      revOtherGain:0, nonOpIn:40, nonOpOut:18,
     },
     '2027-2028': null,
     '2028-2029': null,
   },
 
-  // 福田校区
+  // 福田校区（示例数据）
   '福田': {
     '2026-2027': {
-      students:1780, avgTuition:26.75, avgFee:1.18, staff:478,
-      foreignTeacher:140, chineseTeacher:143,
-      revTuition:47382.09, revHobby:0, revExam:0,
-      revMeal:1779.11, revBus:312.96, revDorm:0, revOther:0,
-      costSalaryF:8456.79, costSalaryC:6531.81,
-      costRentExt:2343.79, costRentInt:3300, costDormInt:105.35,
-      costWelfare:1734.16, costAdminMix:1838.98,
-      costBOES:1506.75, costBOESopen:0, costBG:6159.67,
-      costMeal:2110.76, costBus:226.82, costDormOp:0,
-      costMgmt:3150.66, costTax:10.6, costFinance:80,
-      revOtherGain:40, nonOpIn:0, nonOpOut:0,
+      students:1600, avgTuition:25, avgFee:1.1, staff:430,
+      foreignTeacher:130, chineseTeacher:130,
+      revTuition:40000, revHobby:0, revExam:0,
+      revMeal:1600, revBus:280, revDorm:0, revOther:0,
+      costSalaryF:7500, costSalaryC:5800,
+      costRentExt:2100, costRentInt:3000, costDormInt:100,
+      costWelfare:1500, costAdminMix:1600,
+      costBOES:1300, costBOESopen:0, costBG:5200,
+      costMeal:1900, costBus:200, costDormOp:0,
+      costMgmt:2800, costTax:9, costFinance:70,
+      revOtherGain:35, nonOpIn:0, nonOpOut:0,
     },
     '2027-2028': null,
     '2028-2029': null,
@@ -970,6 +994,118 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
     STATE = JSON.parse(JSON.stringify(RAW));
     renderAll();
   }
+});
+
+/* ───────── N. 导入 / 导出 / Excel 模板 ───────── */
+const FIELD_ORDER = [
+  'students','avgTuition','avgFee','staff','foreignTeacher','chineseTeacher',
+  'revTuition','revHobby','revExam','revMeal','revBus','revDorm','revOther',
+  'costSalaryF','costSalaryC','costRentExt','costRentInt','costDormInt',
+  'costWelfare','costAdminMix','costBOES','costBOESopen','costBG',
+  'costMeal','costBus','costDormOp','costMgmt','costTax','costFinance',
+  'revOtherGain','nonOpIn','nonOpOut'
+];
+
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(STATE, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `预算稽核数据_${ts}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  alert('✓ 已导出当前数据。请妥善保管 JSON 文件，下次打开仪表板时可通过「导入」加载。');
+});
+
+document.getElementById('btnImport').addEventListener('click', ()=>{
+  document.getElementById('fileInput').click();
+});
+document.getElementById('fileInput').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try {
+      const text = ev.target.result;
+      let imported;
+      if(f.name.endsWith('.json')){
+        imported = JSON.parse(text);
+        STATE = imported;
+      } else if(f.name.endsWith('.csv')){
+        imported = parseCSV(text);
+        for(const c of CAMPUSES){
+          if(!STATE[c]) STATE[c] = {};
+          for(const y of YEARS){
+            if(imported[c] && imported[c][y]) STATE[c][y] = imported[c][y];
+          }
+        }
+      } else {
+        throw new Error('请选择 .json 或 .csv 文件');
+      }
+      document.getElementById('dataSource').textContent = `已导入 · ${f.name}`;
+      document.getElementById('dataSource').style.color = 'var(--green)';
+      renderAll();
+      alert(`✓ 已成功导入 ${f.name}。如需保存修改，请点击「💾 导出 JSON」。`);
+    } catch(err){
+      alert('✗ 导入失败：' + err.message + '\n\n请确认文件格式是否正确。');
+    }
+  };
+  reader.readAsText(f, 'UTF-8');
+  e.target.value = '';
+});
+
+function parseCSV(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+  const result = {};
+  for(const c of CAMPUSES){ result[c] = {'2026-2027':null,'2027-2028':null,'2028-2029':null}; }
+  // 跳过表头行（如包含 "校区" 字样）
+  let start = 0;
+  for(let i=0;i<Math.min(3,lines.length);i++){
+    if(lines[i].includes('校区') || lines[i].toLowerCase().includes('campus') || lines[i].includes('说明')){
+      start = i+1;
+    }
+  }
+  for(let i=start;i<lines.length;i++){
+    const cells = lines[i].split(',').map(s=>s.trim());
+    if(cells.length<3) continue;
+    const campus = cells[0], year = cells[1];
+    if(!CAMPUSES.includes(campus) || !YEARS.includes(year)) continue;
+    const rec = {};
+    let hasAny = false;
+    for(let j=0;j<FIELD_ORDER.length;j++){
+      const v = cells[2+j];
+      if(v==null || v==='' || v==='-' || v==='—'){
+        rec[FIELD_ORDER[j]] = null;
+      } else {
+        const num = parseFloat(v);
+        if(!isNaN(num)){ rec[FIELD_ORDER[j]] = num; hasAny = true; }
+        else rec[FIELD_ORDER[j]] = null;
+      }
+    }
+    if(hasAny) result[campus][year] = rec;
+  }
+  return result;
+}
+
+document.getElementById('btnTemplate').addEventListener('click', ()=>{
+  const headers = ['校区','学年', ...FIELD_ORDER.map(k=>RAW.fields[k])];
+  const lines = [headers.join(',')];
+  lines.push(['说明','单位:万元（人数除外）', ...FIELD_ORDER.map(k=>{
+    if(['students','staff','foreignTeacher','chineseTeacher'].includes(k)) return '人';
+    if(['avgTuition','avgFee'].includes(k)) return '万元/人';
+    return '万元';
+  })].join(','));
+  for(const c of CAMPUSES){
+    for(const y of YEARS){
+      const row = [c, y, ...FIELD_ORDER.map(()=>'')];
+      lines.push(row.join(','));
+    }
+  }
+  const csv = '\uFEFF' + lines.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = '预算稽核_数据模板.csv';
+  a.click(); URL.revokeObjectURL(url);
+  alert('✓ 模板已下载。\n\n使用步骤：\n1. 用 Excel/WPS 打开此 CSV 文件\n2. 在每行（共 39 行 = 13校区×3学年）填入对应数字\n3. 另存为 CSV 格式\n4. 回到本仪表板 → 点「📤 导入数据」选择此文件');
 });
 
 /* 启动 */
